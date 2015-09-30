@@ -9,6 +9,7 @@ define([
     Dog.prototype.initOptions = function(options){
         //给实例扩展属性，方法
         declare.mixin(this, options);
+        return this;
     }
 
     Dog.prototype.init = function(){
