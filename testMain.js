@@ -8,5 +8,4 @@ define([
 
 
 //总结
-//在初始化了_YellowDog类的init方法
-//初始化一个_Dog实例
+//只初始化一个_Dog实例

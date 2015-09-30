@@ -5,7 +5,7 @@ define([
     //New一个Dog类
     function Dog(options){
         console.log('初始化Dog');
-        this.initOptions(options).init();
+        //this.initOptions(options).init();
     }
 
     Dog.prototype.initOptions = function(options){
