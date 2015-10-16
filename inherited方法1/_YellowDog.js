@@ -4,10 +4,16 @@ define([
 ],function(declare, _Dog){
     //delcare方法 _Dog为YellowDog父类
     var YellowDog = declare([_Dog], {
-        age: function(){
-            //调用this.inherited方法，YellowDog实例，调用_Dog原型上的age方法
+        init: function(){
+            //调用_Dog上面init方法
             this.inherited(arguments);
+            this.initYellowDog();
+        },
+
+        initYellowDog: function(){
+            console.log('YellowDog 初始化了');
         }
+
     });
     return YellowDog;
 });

@@ -14,9 +14,8 @@ define([
     };
 
     Dog.prototype.init = function(){
-        console.log('调用_Dog的init方法');
-        this.isHunger();       
-    };
+        this.isHunger();
+    }
 
     Dog.prototype.isHunger = function(){
         if(this.hunger){
