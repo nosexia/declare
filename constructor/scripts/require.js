@@ -43,7 +43,9 @@
     }
 }*/
 
-
+var require = {
+    baseUrl: './scripts'
+};
 
 
 var requirejs, require, define;
