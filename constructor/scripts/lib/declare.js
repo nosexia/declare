@@ -1,924 +1,584 @@
-(function () {
-
-    /**
-     * @projectName declare
-     * @github http://github.com/doug-martin/declare.js
-     * @header
-     *
-     * Declare is a library designed to allow writing object oriented code the same way in both the browser and node.js.
-     *
-     * ##Installation
-     *
-     * `npm install declare.js`
-     *
-     * Or [download the source](https://raw.github.com/doug-martin/declare.js/master/declare.js) ([minified](https://raw.github.com/doug-martin/declare.js/master/declare-min.js))
-     *
-     * ###Requirejs
-     *
-     * To use with requirejs place the `declare` source in the root scripts directory
-     *
-     * ```
-     *
-     * define(["declare"], function(declare){
-     *      return declare({
-     *          instance : {
-     *              hello : function(){
-     *                  return "world";
-     *              }
-     *          }
-     *      });
-     * });
-     *
-     * ```
-     *
-     *
-     * ##Usage
-     *
-     * declare.js provides
-     *
-     * Class methods
-     *
-     * * `as(module | object, name)` : exports the object to module or the object with the name
-     * * `mixin(mixin)` : mixes in an object but does not inherit directly from the object. **Note** this does not return a new class but changes the original class.
-     * * `extend(proto)` : extend a class with the given properties. A shortcut to `declare(Super, {})`;
-     *
-     * Instance methods
-     *
-     * * `_super(arguments)`: calls the super of the current method, you can pass in either the argments object or an array with arguments you want passed to super
-     * * `_getSuper()`: returns a this methods direct super.
-     * * `_static` : use to reference class properties and methods.
-     * * `get(prop)` : gets a property invoking the getter if it exists otherwise it just returns the named property on the object.
-     * * `set(prop, val)` : sets a property invoking the setter if it exists otherwise it just sets the named property on the object.
-     *
-     *
-     * ###Declaring a new Class
-     *
-     * Creating a new class with declare is easy!
-     *
-     * ```
-     *
-     * var Mammal = declare({
-     *      //define your instance methods and properties
-     *      instance : {
-     *
-     *          //will be called whenever a new instance is created
-     *          constructor: function(options) {
-     *              options = options || {};
-     *              this._super(arguments);
-     *              this._type = options.type || "mammal";
-     *          },
-     *
-     *          speak : function() {
-     *              return  "A mammal of type " + this._type + " sounds like";
-     *          },
-     *
-     *          //Define your getters
-     *          getters : {
-     *
-     *              //can be accessed by using the get method. (mammal.get("type"))
-     *              type : function() {
-     *                  return this._type;
-     *              }
-     *          },
-     *
-     *           //Define your setters
-     *          setters : {
-     *
-     *                //can be accessed by using the set method. (mammal.set("type", "mammalType"))
-     *              type : function(t) {
-     *                  this._type = t;
-     *              }
-     *          }
-     *      },
-     *
-     *      //Define your static methods
-     *      static : {
-     *
-     *          //Mammal.soundOff(); //"Im a mammal!!"
-     *          soundOff : function() {
-     *              return "Im a mammal!!";
-     *          }
-     *      }
-     * });
-     *
-     *
-     * ```
-     *
-     * You can use Mammal just like you would any other class.
-     *
-     * ```
-     * Mammal.soundOff("Im a mammal!!");
-     *
-     * var myMammal = new Mammal({type : "mymammal"});
-     * myMammal.speak(); // "A mammal of type mymammal sounds like"
-     * myMammal.get("type"); //"mymammal"
-     * myMammal.set("type", "mammal");
-     * myMammal.get("type"); //"mammal"
-     *
-     *
-     * ```
-     *
-     * ###Extending a class
-     *
-     * If you want to just extend a single class use the .extend method.
-     *
-     * ```
-     *
-     * var Wolf = Mammal.extend({
-     *
-     *   //define your instance method
-     *   instance: {
-     *
-     *        //You can override super constructors just be sure to call `_super`
-     *       constructor: function(options) {
-     *          options = options || {};
-     *          this._super(arguments); //call our super constructor.
-     *          this._sound = "growl";
-     *          this._color = options.color || "grey";
-     *      },
-     *
-     *      //override Mammals `speak` method by appending our own data to it.
-     *      speak : function() {
-     *          return this._super(arguments) + " a " + this._sound;
-     *      },
-     *
-     *      //add new getters for sound and color
-     *      getters : {
-     *
-     *           //new Wolf().get("type")
-     *           //notice color is read only as we did not define a setter
-     *          color : function() {
-     *              return this._color;
-     *          },
-     *
-     *          //new Wolf().get("sound")
-     *          sound : function() {
-     *              return this._sound;
-     *          }
-     *      },
-     *
-     *      setters : {
-     *
-     *          //new Wolf().set("sound", "howl")
-     *          sound : function(s) {
-     *              this._sound = s;
-     *          }
-     *      }
-     *
-     *  },
-     *
-     *  static : {
-     *
-     *      //You can override super static methods also! And you can still use _super
-     *      soundOff : function() {
-     *          //You can even call super in your statics!!!
-     *          //should return "I'm a mammal!! that growls"
-     *          return this._super(arguments) + " that growls";
-     *      }
-     *  }
-     * });
-     *
-     * Wolf.soundOff(); //Im a mammal!! that growls
-     *
-     * var myWolf = new Wolf();
-     * myWolf instanceof Mammal //true
-     * myWolf instanceof Wolf //true
-     *
-     * ```
-     *
-     * You can also extend a class by using the declare method and just pass in the super class.
-     *
-     * ```
-     * //Typical hierarchical inheritance
-     * // Mammal->Wolf->Dog
-     * var Dog = declare(Wolf, {
-     *    instance: {
-     *        constructor: function(options) {
-     *            options = options || {};
-     *            this._super(arguments);
-     *            //override Wolfs initialization of sound to woof.
-     *            this._sound = "woof";
-     *
-     *        },
-     *
-     *        speak : function() {
-     *            //Should return "A mammal of type mammal sounds like a growl thats domesticated"
-     *            return this._super(arguments) + " thats domesticated";
-     *        }
-     *    },
-     *
-     *    static : {
-     *        soundOff : function() {
-     *            //should return "I'm a mammal!! that growls but now barks"
-     *            return this._super(arguments) + " but now barks";
-     *        }
-     *    }
-     * });
-     *
-     * Dog.soundOff(); //Im a mammal!! that growls but now barks
-     *
-     * var myDog = new Dog();
-     * myDog instanceof Mammal //true
-     * myDog instanceof Wolf //true
-     * myDog instanceof Dog //true
-     *
-     *
-     * //Notice you still get the extend method.
-     *
-     * // Mammal->Wolf->Dog->Breed
-     * var Breed = Dog.extend({
-     *    instance: {
-     *
-     *        //initialize outside of constructor
-     *        _pitch : "high",
-     *
-     *        constructor: function(options) {
-     *            options = options || {};
-     *            this._super(arguments);
-     *            this.breed = options.breed || "lab";
-     *        },
-     *
-     *        speak : function() {
-     *            //Should return "A mammal of type mammal sounds like a
-     *            //growl thats domesticated with a high pitch!"
-     *            return this._super(arguments) + " with a " + this._pitch + " pitch!";
-     *        },
-     *
-     *        getters : {
-     *            pitch : function() {
-     *                return this._pitch;
-     *            }
-     *        }
-     *    },
-     *
-     *    static : {
-     *        soundOff : function() {
-     *            //should return "I'M A MAMMAL!! THAT GROWLS BUT NOW BARKS!"
-     *            return this._super(arguments).toUpperCase() + "!";
-     *        }
-     *    }
-     * });
-     *
-     *
-     * Breed.soundOff()//"IM A MAMMAL!! THAT GROWLS BUT NOW BARKS!"
-     *
-     * var myBreed = new Breed({color : "gold", type : "lab"}),
-     * myBreed instanceof Dog //true
-     * myBreed instanceof Wolf //true
-     * myBreed instanceof Mammal //true
-     * myBreed.speak() //"A mammal of type lab sounds like a woof thats domesticated with a high pitch!"
-     * myBreed.get("type") //"lab"
-     * myBreed.get("color") //"gold"
-     * myBreed.get("sound")" //"woof"
-     * ```
-     *
-     * ###Multiple Inheritance / Mixins
-     *
-     * declare also allows the use of multiple super classes.
-     * This is useful if you have generic classes that provide functionality but shouldnt be used on their own.
-     *
-     * Lets declare a mixin that allows us to watch for property changes.
-     *
-     * ```
-     * //Notice that we set up the functions outside of declare because we can reuse them
-     *
-     * function _set(prop, val) {
-     *     //get the old value
-     *     var oldVal = this.get(prop);
-     *     //call super to actually set the property
-     *     var ret = this._super(arguments);
-     *     //call our handlers
-     *     this.__callHandlers(prop, oldVal, val);
-     *     return ret;
-     * }
-     *
-     * function _callHandlers(prop, oldVal, newVal) {
-     *    //get our handlers for the property
-     *     var handlers = this.__watchers[prop], l;
-     *     //if the handlers exist and their length does not equal 0 then we call loop through them
-     *     if (handlers && (l = handlers.length) !== 0) {
-     *         for (var i = 0; i < l; i++) {
-     *             //call the handler
-     *             handlers[i].call(null, prop, oldVal, newVal);
-     *         }
-     *     }
-     * }
-     *
-     *
-     * //the watch function
-     * function _watch(prop, handler) {
-     *     if ("function" !== typeof handler) {
-     *         //if its not a function then its an invalid handler
-     *         throw new TypeError("Invalid handler.");
-     *     }
-     *     if (!this.__watchers[prop]) {
-     *         //create the watchers if it doesnt exist
-     *         this.__watchers[prop] = [handler];
-     *     } else {
-     *         //otherwise just add it to the handlers array
-     *         this.__watchers[prop].push(handler);
-     *     }
-     * }
-     *
-     * function _unwatch(prop, handler) {
-     *     if ("function" !== typeof handler) {
-     *         throw new TypeError("Invalid handler.");
-     *     }
-     *     var handlers = this.__watchers[prop], index;
-     *     if (handlers && (index = handlers.indexOf(handler)) !== -1) {
-     *        //remove the handler if it is found
-     *         handlers.splice(index, 1);
-     *     }
-     * }
-     *
-     * declare({
-     *     instance:{
-     *         constructor:function () {
-     *             this._super(arguments);
-     *             //set up our watchers
-     *             this.__watchers = {};
-     *         },
-     *
-     *         //override the default set function so we can watch values
-     *         "set":_set,
-     *         //set up our callhandlers function
-     *         __callHandlers:_callHandlers,
-     *         //add the watch function
-     *         watch:_watch,
-     *         //add the unwatch function
-     *         unwatch:_unwatch
-     *     },
-     *
-     *     "static":{
-     *
-     *         init:function () {
-     *             this._super(arguments);
-     *             this.__watchers = {};
-     *         },
-     *         //override the default set function so we can watch values
-     *         "set":_set,
-     *         //set our callHandlers function
-     *         __callHandlers:_callHandlers,
-     *         //add the watch
-     *         watch:_watch,
-     *         //add the unwatch function
-     *         unwatch:_unwatch
-     *     }
-     * })
-     *
-     * ```
-     *
-     * Now lets use the mixin
-     *
-     * ```
-     * var WatchDog = declare([Dog, WatchMixin]);
-     *
-     * var watchDog = new WatchDog();
-     * //create our handler
-     * function watch(id, oldVal, newVal) {
-     *     console.log("watchdog's %s was %s, now %s", id, oldVal, newVal);
-     * }
-     *
-     * //watch for property changes
-     * watchDog.watch("type", watch);
-     * watchDog.watch("color", watch);
-     * watchDog.watch("sound", watch);
-     *
-     * //now set the properties each handler will be called
-     * watchDog.set("type", "newDog");
-     * watchDog.set("color", "newColor");
-     * watchDog.set("sound", "newSound");
-     *
-     *
-     * //unwatch the property changes
-     * watchDog.unwatch("type", watch);
-     * watchDog.unwatch("color", watch);
-     * watchDog.unwatch("sound", watch);
-     *
-     * //no handlers will be called this time
-     * watchDog.set("type", "newDog");
-     * watchDog.set("color", "newColor");
-     * watchDog.set("sound", "newSound");
-     *
-     *
-     * ```
-     *
-     * ###Accessing static methods and properties witin an instance.
-     *
-     * To access static properties on an instance use the `_static` property which is a reference to your constructor.
-     *
-     * For example if your in your constructor and you want to have configurable default values.
-     *
-     * ```
-     * consturctor : function constructor(opts){
-     *     this.opts = opts || {};
-     *     this._type = opts.type || this._static.DEFAULT_TYPE;
-     * }
-     * ```
-     *
-     *
-     *
-     * ###Creating a new instance of within an instance.
-     *
-     * Often times you want to create a new instance of an object within an instance. If your subclassed however you cannot return a new instance of the parent class as it will not be the right sub class. `declare` provides a way around this by setting the `_static` property on each isntance of the class.
-     *
-     * Lets add a reproduce method `Mammal`
-     *
-     * ```
-     * reproduce : function(options){
-     *     return new this._static(options);
-     * }
-     * ```
-     *
-     * Now in each subclass you can call reproduce and get the proper type.
-     *
-     * ```
-     * var myDog = new Dog();
-     * var myDogsChild = myDog.reproduce();
-     *
-     * myDogsChild instanceof Dog; //true
-     * ```
-     *
-     * ###Using the `as`
-     *
-     * `declare` also provides an `as` method which allows you to add your class to an object or if your using node.js you can pass in `module` and the class will be exported as the module.
-     *
-     * ```
-     * var animals = {};
-     *
-     * Mammal.as(animals, "Dog");
-     * Wolf.as(animals, "Wolf");
-     * Dog.as(animals, "Dog");
-     * Breed.as(animals, "Breed");
-     *
-     * var myDog = new animals.Dog();
-     *
-     * ```
-     *
-     * Or in node
-     *
-     * ```
-     * Mammal.as(exports, "Dog");
-     * Wolf.as(exports, "Wolf");
-     * Dog.as(exports, "Dog");
-     * Breed.as(exports, "Breed");
-     *
-     * ```
-     *
-     * To export a class as the `module` in node
-     *
-     * ```
-     * Mammal.as(module);
-     * ```
-     *
-     *
-     */
-    function createDeclared() {
-        var arraySlice = Array.prototype.slice, classCounter = 0, Base, forceNew = new Function();
-
-        var SUPER_REGEXP = /(super)/g;
-
-        function argsToArray(args, slice) {
-            slice = slice || 0;
-            return arraySlice.call(args, slice);
-        }
-
-        function isArray(obj) {
-            return Object.prototype.toString.call(obj) === "[object Array]";
-        }
-
-        function isObject(obj) {
-            var undef;
-            return obj !== null && obj !== undef && typeof obj === "object";
-        }
-
-        function isHash(obj) {
-            var ret = isObject(obj);
-            return ret && obj.constructor === Object;
-        }
-
-        var isArguments = function _isArguments(object) {
-            return Object.prototype.toString.call(object) === '[object Arguments]';
-        };
-
-        if (!isArguments(arguments)) {
-            isArguments = function _isArguments(obj) {
-                return !!(obj && obj.hasOwnProperty("callee"));
-            };
-        }
-
-        function indexOf(arr, item) {
-            if (arr && arr.length) {
-                for (var i = 0, l = arr.length; i < l; i++) {
-                    if (arr[i] === item) {
-                        return i;
-                    }
-                }
-            }
-            return -1;
-        }
-
-        function merge(target, source, exclude) {
-            var name, s;
-            for (name in source) {
-                if (source.hasOwnProperty(name) && indexOf(exclude, name) === -1) {
-                    s = source[name];
-                    if (!(name in target) || (target[name] !== s)) {
-                        target[name] = s;
-                    }
-                }
-            }
-            return target;
-        }
-
-        function callSuper(args, a) {
-            var meta = this.__meta,
-                supers = meta.supers,
-                l = supers.length, superMeta = meta.superMeta, pos = superMeta.pos;
-            if (l > pos) {
-                args = !args ? [] : (!isArguments(args) && !isArray(args)) ? [args] : args;
-                var name = superMeta.name, f = superMeta.f, m;
-                do {
-                    m = supers[pos][name];
-                    if ("function" === typeof m && (m = m._f || m) !== f) {
-                        superMeta.pos = 1 + pos;
-                        return m.apply(this, args);
-                    }
-                } while (l > ++pos);
-            }
-
-            return null;
-        }
-
-        function getSuper() {
-            var meta = this.__meta,
-                supers = meta.supers,
-                l = supers.length, superMeta = meta.superMeta, pos = superMeta.pos;
-            if (l > pos) {
-                var name = superMeta.name, f = superMeta.f, m;
-                do {
-                    m = supers[pos][name];
-                    if ("function" === typeof m && (m = m._f || m) !== f) {
-                        superMeta.pos = 1 + pos;
-                        return m.bind(this);
-                    }
-                } while (l > ++pos);
-            }
-            return null;
-        }
-
-        function getter(name) {
-            var getters = this.__getters__;
-            if (getters.hasOwnProperty(name)) {
-                return getters[name].apply(this);
-            } else {
-                return this[name];
-            }
-        }
-
-        function setter(name, val) {
-            var setters = this.__setters__;
-            if (isHash(name)) {
-                for (var i in name) {
-                    var prop = name[i];
-                    if (setters.hasOwnProperty(i)) {
-                        setters[name].call(this, prop);
-                    } else {
-                        this[i] = prop;
-                    }
-                }
-            } else {
-                if (setters.hasOwnProperty(name)) {
-                    return setters[name].apply(this, argsToArray(arguments, 1));
-                } else {
-                    return this[name] = val;
-                }
-            }
-        }
-
-
-        function defaultFunction() {
-            var meta = this.__meta || {},
-                supers = meta.supers,
-                l = supers.length, superMeta = meta.superMeta, pos = superMeta.pos;
-            if (l > pos) {
-                var name = superMeta.name, f = superMeta.f, m;
-                do {
-                    m = supers[pos][name];
-                    if ("function" === typeof m && (m = m._f || m) !== f) {
-                        superMeta.pos = 1 + pos;
-                        return m.apply(this, arguments);
-                    }
-                } while (l > ++pos);
-            }
-            return null;
-        }
-
-
-        function functionWrapper(f, name) {
-            if (f.toString().match(SUPER_REGEXP)) {
-                var wrapper = function wrapper() {
-                    var ret, meta = this.__meta || {};
-                    var orig = meta.superMeta;
-                    meta.superMeta = {f: f, pos: 0, name: name};
-                    switch (arguments.length) {
-                    case 0:
-                        ret = f.call(this);
-                        break;
-                    case 1:
-                        ret = f.call(this, arguments[0]);
-                        break;
-                    case 2:
-                        ret = f.call(this, arguments[0], arguments[1]);
-                        break;
-
-                    case 3:
-                        ret = f.call(this, arguments[0], arguments[1], arguments[2]);
-                        break;
-                    default:
-                        ret = f.apply(this, arguments);
-                    }
-                    meta.superMeta = orig;
-                    return ret;
-                };
-                wrapper._f = f;
-                return wrapper;
-            } else {
-                f._f = f;
-                return f;
-            }
-        }
-
-        function defineMixinProps(child, proto) {
-
-            var operations = proto.setters || {}, __setters = child.__setters__, __getters = child.__getters__;
-            for (var i in operations) {
-                if (!__setters.hasOwnProperty(i)) {  //make sure that the setter isnt already there
-                    __setters[i] = operations[i];
-                }
-            }
-            operations = proto.getters || {};
-            for (i in operations) {
-                if (!__getters.hasOwnProperty(i)) {  //make sure that the setter isnt already there
-                    __getters[i] = operations[i];
-                }
-            }
-            for (var j in proto) {
-                if (j !== "getters" && j !== "setters") {
-                    var p = proto[j];
-                    if ("function" === typeof p) {
-                        if (!child.hasOwnProperty(j)) {
-                            child[j] = functionWrapper(defaultFunction, j);
-                        }
-                    } else {
-                        child[j] = p;
-                    }
-                }
-            }
-        }
-
-        function mixin() {
-            var args = argsToArray(arguments), l = args.length;
-            var child = this.prototype;
-            var childMeta = child.__meta, thisMeta = this.__meta, bases = child.__meta.bases, staticBases = bases.slice(),
-                staticSupers = thisMeta.supers || [], supers = childMeta.supers || [];
-            for (var i = 0; i < l; i++) {
-                var m = args[i], mProto = m.prototype;
-                var protoMeta = mProto.__meta, meta = m.__meta;
-                !protoMeta && (protoMeta = (mProto.__meta = {proto: mProto || {}}));
-                !meta && (meta = (m.__meta = {proto: m.__proto__ || {}}));
-                defineMixinProps(child, protoMeta.proto || {});
-                defineMixinProps(this, meta.proto || {});
-                //copy the bases for static,
-
-                mixinSupers(m.prototype, supers, bases);
-                mixinSupers(m, staticSupers, staticBases);
-            }
-            return this;
-        }
-
-        function mixinSupers(sup, arr, bases) {
-            var meta = sup.__meta;
-            !meta && (meta = (sup.__meta = {}));
-            var unique = sup.__meta.unique;
-            !unique && (meta.unique = "declare" + ++classCounter);
-            //check it we already have this super mixed into our prototype chain
-            //if true then we have already looped their supers!
-            if (indexOf(bases, unique) === -1) {
-                //add their id to our bases
-                bases.push(unique);
-                var supers = sup.__meta.supers || [], i = supers.length - 1 || 0;
-                while (i >= 0) {
-                    mixinSupers(supers[i--], arr, bases);
-                }
-                arr.unshift(sup);
-            }
-        }
-
-        function defineProps(child, proto) {
-            var operations = proto.setters,
-                __setters = child.__setters__,
-                __getters = child.__getters__;
-            if (operations) {
-                for (var i in operations) {
-                    __setters[i] = operations[i];
-                }
-            }
-            operations = proto.getters || {};
-            if (operations) {
-                for (i in operations) {
-                    __getters[i] = operations[i];
-                }
-            }
-            for (i in proto) {
-                if (i != "getters" && i != "setters") {
-                    var f = proto[i];
-                    if ("function" === typeof f) {
-                        var meta = f.__meta || {};
-                        if (!meta.isConstructor) {
-                            child[i] = functionWrapper(f, i);
-                        } else {
-                            child[i] = f;
-                        }
-                    } else {
-                        child[i] = f;
-                    }
-                }
-            }
-
-        }
-
-        function _export(obj, name) {
-            if (obj && name) {
-                obj[name] = this;
-            } else {
-                obj.exports = obj = this;
-            }
-            return this;
-        }
-
-        function extend(proto) {
-            return declare(this, proto);
-        }
-
-        function getNew(ctor) {
-            // create object with correct prototype using a do-nothing
-            // constructor
-            forceNew.prototype = ctor.prototype;
-            var t = new forceNew();
-            forceNew.prototype = null;  // clean up
-            return t;
-        }
-
-
-        function __declare(child, sup, proto) {
-            var childProto = {}, supers = [];
-            var unique = "declare" + ++classCounter, bases = [], staticBases = [];
-            var instanceSupers = [], staticSupers = [];
-            var meta = {
-                supers: instanceSupers,
-                unique: unique,
-                bases: bases,
-                superMeta: {
-                    f: null,
-                    pos: 0,
-                    name: null
-                }
-            };
-            var childMeta = {
-                supers: staticSupers,
-                unique: unique,
-                bases: staticBases,
-                isConstructor: true,
-                superMeta: {
-                    f: null,
-                    pos: 0,
-                    name: null
-                }
-            };
-
-            if (isHash(sup) && !proto) {
-                proto = sup;
-                sup = Base;
-            }
-
-            if ("function" === typeof sup || isArray(sup)) {
-                supers = isArray(sup) ? sup : [sup];
-                sup = supers.shift();
-                child.__meta = childMeta;
-                childProto = getNew(sup);
-                childProto.__meta = meta;
-                childProto.__getters__ = merge({}, childProto.__getters__ || {});
-                childProto.__setters__ = merge({}, childProto.__setters__ || {});
-                child.__getters__ = merge({}, child.__getters__ || {});
-                child.__setters__ = merge({}, child.__setters__ || {});
-                mixinSupers(sup.prototype, instanceSupers, bases);
-                mixinSupers(sup, staticSupers, staticBases);
-            } else {
-                child.__meta = childMeta;
-                childProto.__meta = meta;
-                childProto.__getters__ = childProto.__getters__ || {};
-                childProto.__setters__ = childProto.__setters__ || {};
-                child.__getters__ = child.__getters__ || {};
-                child.__setters__ = child.__setters__ || {};
-            }
-            child.prototype = childProto;
-            if (proto) {
-                var instance = meta.proto = proto.instance || {};
-                var stat = childMeta.proto = proto.static || {};
-                stat.init = stat.init || defaultFunction;
-                defineProps(childProto, instance);
-                defineProps(child, stat);
-                if (!instance.hasOwnProperty("constructor")) {
-                    childProto.constructor = instance.constructor = functionWrapper(defaultFunction, "constructor");
-                } else {
-                    childProto.constructor = functionWrapper(instance.constructor, "constructor");
-                }
-            } else {
-                meta.proto = {};
-                childMeta.proto = {};
-                child.init = functionWrapper(defaultFunction, "init");
-                childProto.constructor = functionWrapper(defaultFunction, "constructor");
-            }
-            if (supers.length) {
-                mixin.apply(child, supers);
-            }
-            if (sup) {
-                //do this so we mixin our super methods directly but do not ov
-                merge(child, merge(merge({}, sup), child));
-            }
-            childProto._super = child._super = callSuper;
-            childProto._getSuper = child._getSuper = getSuper;
-            childProto._static = child;
-        }
-
-        function declare(sup, proto) {
-            function declared() {
-                switch (arguments.length) {
-                case 0:
-                    this.constructor.call(this);
-                    break;
-                case 1:
-                    this.constructor.call(this, arguments[0]);
-                    break;
-                case 2:
-                    this.constructor.call(this, arguments[0], arguments[1]);
-                    break;
-                case 3:
-                    this.constructor.call(this, arguments[0], arguments[1], arguments[2]);
-                    break;
-                default:
-                    this.constructor.apply(this, arguments);
-                }
-            }
-
-            __declare(declared, sup, proto);
-            return declared.init() || declared;
-        }
-
-        function singleton(sup, proto) {
-            var retInstance;
-
-            function declaredSingleton() {
-                if (!retInstance) {
-                    this.constructor.apply(this, arguments);
-                    retInstance = this;
-                }
-                return retInstance;
-            }
-
-            __declare(declaredSingleton, sup, proto);
-            return  declaredSingleton.init() || declaredSingleton;
-        }
-
-        Base = declare({
-            instance: {
-                "get": getter,
-                "set": setter
-            },
-
-            "static": {
-                "get": getter,
-                "set": setter,
-                mixin: mixin,
-                extend: extend,
-                as: _export
-            }
-        });
-
-        declare.singleton = singleton;
-        return declare;
-    }
-
-    if ("undefined" !== typeof exports) {
-        if ("undefined" !== typeof module && module.exports) {
-            module.exports = createDeclared();
-        }
-    } else if ("function" === typeof define && define.amd) {
-        define(createDeclared);
+/**
+ * Created by rick on 14-5-16.
+ */
+var _ROOT;
+if(typeof window !== 'undefined'){
+     _ROOT = window;
+}else{
+     _ROOT = global;
+}
+(function(root, factory){
+    if (typeof define === 'function' && define.amd) {
+        // AMD
+        define(factory);
+    } else if (typeof exports === 'object') {
+        // Node, CommonJS-like
+        module.exports = factory();
     } else {
-        this.declare = createDeclared();
+        // Browser globals (root is window)
+        root.declare = factory();
     }
-}());
+}(this, function(){
+    if (_ROOT.__webpackage_declare) {
+        return _ROOT.__webpackage_declare;
+    }
+    var op = Object.prototype, opts = op.toString, xtor = new Function, counter = 0, cname='constructor';
 
+    var _extraNames = "hasOwnProperty.valueOf.isPrototypeOf.propertyIsEnumerable.toLocaleString.toString.constructor".split(".");
+    var _extraLen = _extraNames.length;
 
+    function err(msg, cls){ throw new Error("declare" + (cls ? " " + cls : "") + ": " + msg); }
+
+// C3 Method Resolution Order (see http://www.python.org/download/releases/2.3/mro/)
+    function c3mro(bases, className){
+        var result = [], roots = [{cls: 0, refs: []}], nameMap = {}, clsCount = 1,
+            l = bases.length, i = 0, j, lin, base, top, proto, rec, name, refs;
+
+        // build a list of bases naming them if needed
+        for(; i < l; ++i){
+            base = bases[i];
+            if(!base){
+                err("mixin #" + i + " is unknown. Did you use require to pull it in?", className);
+            }else if(opts.call(base) != "[object Function]"){
+                err("mixin #" + i + " is not a callable constructor.", className);
+            }
+            lin = base._meta ? base._meta.bases : [base];
+            top = 0;
+            // add bases to the name map
+            for(j = lin.length - 1; j >= 0; --j){
+                proto = lin[j].prototype;
+                if(!proto.hasOwnProperty("declaredClass")){
+                    proto.declaredClass = "uniqName_" + (counter++);
+                }
+                name = proto.declaredClass;
+                if(!nameMap.hasOwnProperty(name)){
+                    nameMap[name] = {count: 0, refs: [], cls: lin[j]};
+                    ++clsCount;
+                }
+                rec = nameMap[name];
+                if(top && top !== rec){
+                    rec.refs.push(top);
+                    ++top.count;
+                }
+                top = rec;
+            }
+            ++top.count;
+            roots[0].refs.push(top);
+        }
+
+        // remove classes without external references recursively
+        while(roots.length){
+            top = roots.pop();
+            result.push(top.cls);
+            --clsCount;
+            // optimization: follow a single-linked chain
+            while(refs = top.refs, refs.length == 1){
+                top = refs[0];
+                if(!top || --top.count){
+                    // branch or end of chain => do not end to roots
+                    top = 0;
+                    break;
+                }
+                result.push(top.cls);
+                --clsCount;
+            }
+            if(top){
+                // branch
+                for(i = 0, l = refs.length; i < l; ++i){
+                    top = refs[i];
+                    if(!--top.count){
+                        roots.push(top);
+                    }
+                }
+            }
+        }
+        if(clsCount){
+            err("can't build consistent linearization", className);
+        }
+
+        // calculate the superclass offset
+        base = bases[0];
+        result[0] = base ?
+            base._meta && base === result[result.length - base._meta.bases.length] ?
+                base._meta.bases.length : 1 : 0;
+
+        return result;
+    }
+
+    function declare(className, superclass, props) {
+        if (typeof className != "string") {
+            props = superclass;
+            superclass = className;
+            className = "";
+        }
+        props = props || [];
+
+        var proto, i, t, ctor, name, bases, chains, mixins = 1, parents = superclass;
+
+        if(opts.call(superclass) == "[object Array]"){
+            bases = c3mro(superclass, className);
+            t = bases[0];
+            mixins = bases.length - t;
+            superclass = bases[mixins];
+        } else {
+            bases = [0];
+            if(superclass){
+                if(opts.call(superclass) == "[object Function]"){
+                    t = superclass._meta;
+                    bases = bases.concat(t ? t.bases : superclass);
+                }else{
+                    err("base class is not a callable constructor.", className);
+                }
+            }else if(superclass !== null){
+                err("unknown base class. Did you use require to pull it in?", className);
+            }
+        }
+
+        if (superclass) {
+            for (i = mixins - 1;; --i) {
+                proto = forceNew(superclass);
+                if (!i) {
+                    break;
+                }
+                // mix in properties
+                t = bases[i];
+                (t._meta ? mixOwn : mixin)(proto, t.prototype);
+                // chain in new constructor
+                ctor = new Function;
+                ctor.superclass = superclass;
+                ctor.prototype = proto;
+                superclass = proto.constructor = ctor;
+            }
+        } else {
+            proto = {};
+        }
+
+        safeMixin(proto, props);
+
+        t = props.constructor;
+        if (t !== op.constructor) {
+            t.nom = cname;
+            proto.constructor = t;
+        }
+
+        for (i = mixins - 1; i; --i) {
+            t = bases[i]._meta;
+            if(t && t.chains){
+                chains = mixin(chains || {}, t.chains);
+            }
+        }
+        if(proto["-chains-"]){
+            chains = mixin(chains || {}, proto["-chains-"]);
+        }
+
+        t = !chains || !chains.hasOwnProperty(cname);
+        bases[0] = ctor = (chains && chains.constructor === "manual") ? simpleConstructor(bases) :
+            (bases.length == 1 ? singleConstructor(props.constructor, t) : chainedConstructor(bases, t));
+//        bases[0] = ctor = bases.length == 1 ? singleConstructor(props.constructor, true) : chainedConstructor(bases, true);
+
+        ctor._meta = {
+            bases : bases,
+            hidden : props,
+            chains : chains,
+            parents : parents,
+            ctor : props.constructor
+        };
+        ctor.superclass = superclass && superclass.prototype;
+        ctor.extend = extend;
+        ctor.prototype = proto;
+        proto.constructor = ctor;
+
+        proto.inherited = inherited;
+
+        if (className) {
+            proto.delcaredClass = className;
+        }
+
+        if(chains){
+            for(name in chains){
+                if(proto[name] && typeof chains[name] == "string" && name != cname){
+                    t = proto[name] = chain(name, bases, chains[name] === "after");
+                    t.nom = name;
+                }
+            }
+        }
+        return ctor;
+    }
+
+// forceNew(ctor)
+// return a new object that inherits from ctor.prototype but
+// without actually running ctor on the object.
+    function forceNew(ctor){
+        // create object with correct prototype using a do-nothing
+        // constructor
+        xtor.prototype = ctor.prototype;
+        var t = new xtor;
+        xtor.prototype = null;     // clean up
+        return t;
+    }
+
+// applyNew(args)
+// just like 'new ctor()' except that the constructor and its arguments come
+// from args, which must be an array or an arguments object
+    function applyNew(args){
+        // create an object with ctor's prototype but without
+        // calling ctor on it.
+        var ctor = args.callee, t = forceNew(ctor);
+        // execute the real constructor on the new object
+        ctor.apply(t, args);
+        return t;
+    }
+
+    function singleConstructor(ctor, ctorSpecial){
+        return function() {
+            var a = arguments, t = a, a0 = a[0], f;
+
+            if (!(this instanceof a.callee)) {
+                return applyNew(a);
+            }
+
+            if(ctorSpecial){
+                // full blown ritual
+                if(a0){
+                    // process the preamble of the 1st argument
+                    f = a0.preamble;
+                    if(f){
+                        t = f.apply(this, t) || t;
+                    }
+                }
+                f = this.preamble;
+                if(f){
+                    // process the preamble of this class
+                    f.apply(this, t);
+                    // one peculiarity of the preamble:
+                    // it is called even if it is not needed,
+                    // e.g., there is no constructor to call
+                    // let's watch for the last constructor
+                    // (see ticket #9795)
+                }
+            }
+
+            if (ctor) {
+                ctor.apply(this, a);
+            }
+
+            f = this.postscript;
+            if(f){
+                f.apply(this, a);
+            }
+        };
+    }
+
+    function chainedConstructor(bases, ctorSpecial){
+        return function(){
+            var a = arguments, args = a, a0 = a[0], f, i, m,
+                l = bases.length, preArgs;
+
+            if(!(this instanceof a.callee)){
+                // not called via new, so force it
+                return applyNew(a);
+            }
+
+            //this._inherited = {};
+            // perform the shaman's rituals of the original declare()
+            // 1) call two types of the preamble
+            if(ctorSpecial && (a0 && a0.preamble || this.preamble)){
+                // full blown ritual
+                preArgs = new Array(bases.length);
+                // prepare parameters
+                preArgs[0] = a;
+                for(i = 0;;){
+                    // process the preamble of the 1st argument
+                    a0 = a[0];
+                    if(a0){
+                        f = a0.preamble;
+                        if(f){
+                            a = f.apply(this, a) || a;
+                        }
+                    }
+                    // process the preamble of this class
+                    f = bases[i].prototype;
+                    f = f.hasOwnProperty("preamble") && f.preamble;
+                    if(f){
+                        a = f.apply(this, a) || a;
+                    }
+                    // one peculiarity of the preamble:
+                    // it is called if it is not needed,
+                    // e.g., there is no constructor to call
+                    // let's watch for the last constructor
+                    // (see ticket #9795)
+                    if(++i == l){
+                        break;
+                    }
+                    preArgs[i] = a;
+                }
+            }
+            // 2) call all non-trivial constructors using prepared arguments
+            for(i = l - 1; i >= 0; --i){
+                f = bases[i];
+                m = f._meta;
+                f = m ? m.ctor : f;
+                if(f){
+                    f.apply(this, preArgs ? preArgs[i] : a);
+                }
+            }
+            // 3) continue the original ritual: call the postscript
+            f = this.postscript;
+            if(f){
+                f.apply(this, args);
+            }
+        };
+    }
+
+    function simpleConstructor(bases){
+        return function(){
+            var a = arguments, i = 0, f, m;
+
+            if(!(this instanceof a.callee)){
+                // not called via new, so force it
+                return applyNew(a);
+            }
+
+            //this._inherited = {};
+            // perform the shaman's rituals of the original declare()
+            // 1) do not call the preamble
+            // 2) call the top constructor (it can use this.inherited())
+            for(; f = bases[i]; ++i){ // intentional assignment
+                m = f._meta;
+                f = m ? m.ctor : f;
+                if(f){
+                    f.apply(this, a);
+                    break;
+                }
+            }
+            // 3) call the postscript
+            f = this.postscript;
+            if(f){
+                f.apply(this, a);
+            }
+        };
+    }
+
+    function safeMixin(target, source) {
+        var name, t;
+        // add props adding metadata for incoming functions skipping a constructor
+        for(name in source){
+            t = source[name];
+            if((t !== op[name] || !(name in op)) && name != cname){
+                if(opts.call(t) == "[object Function]"){
+                    // non-trivial function method => attach its name
+                    t.nom = name;
+                }
+                target[name] = t;
+            }
+        }
+        if(hasBugForInSkip()){
+            for(var i= _extraLen; i;){
+                name = _extraNames[--i];
+                t = source[name];
+                if((t !== op[name] || !(name in op)) && name != cname){
+                    if(opts.call(t) == "[object Function]"){
+                        // non-trivial function method => attach its name
+                        t.nom = name;
+                    }
+                    target[name] = t;
+                }
+            }
+        }
+        return target;
+    }
+
+    function mixin(target, sources) {
+        target = target || {};
+        for (var i = 1, l = arguments.length; i < l; ++i) {
+            _mixin(target, arguments[i]);
+        }
+        return target;
+    }
+
+    function _mixin(dest, source) {
+        var name, s, i, empty = {};
+        for(name in source){
+            // the (!(name in empty) || empty[name] !== s) condition avoids copying properties in "source"
+            // inherited from Object.prototype.    For example, if dest has a custom toString() method,
+            // don't overwrite it with the toString() method that source inherited from Object.prototype
+            s = source[name];
+            if(!(name in dest) || (dest[name] !== s && (!(name in empty) || empty[name] !== s))){
+                dest[name] = s;
+            }
+        }
+
+        if(hasBugForInSkip()){
+            if(source){
+                for(i = 0; i < _extraLen; ++i){
+                    name = _extraNames[i];
+                    s = source[name];
+                    if(!(name in dest) || (dest[name] !== s && (!(name in empty) || empty[name] !== s))){
+                        dest[name] = s;
+                    }
+                }
+            }
+        }
+
+        return dest; // Object
+    }
+
+    function mixOwn(target, source) {
+        // add props adding metadata for incoming functions skipping a constructor
+        for(var name in source){
+            if(name != cname && source.hasOwnProperty(name)){
+                target[name] = source[name];
+            }
+        }
+        if(hasBugForInSkip()){
+            for(var i= _extraLen; i;){
+                name = _extraNames[--i];
+                if(name != cname && source.hasOwnProperty(name)){
+                    target[name] = source[name];
+                }
+            }
+        }
+    }
+
+    function extend(source){
+        declare.safeMixin(this.prototype, source);
+        return this;
+    }
+
+    function hasBugForInSkip() {
+        for (var i in {toString : 1}) {
+            return 0;
+        }
+        return 1;
+    }
+
+    function chain(name, bases, reversed){
+        return function(){
+            var b, m, f, i = 0, step = 1;
+            if(reversed){
+                i = bases.length - 1;
+                step = -1;
+            }
+            for(; b = bases[i]; i += step){ // intentional assignment
+                m = b._meta;
+                f = (m ? m.hidden : b.prototype)[name];
+                if(f){
+                    f.apply(this, arguments);
+                }
+            }
+        };
+    }
+
+    function inherited(args, a, f){
+        var name, chains, bases, caller, meta, base, proto, opf, pos,
+            cache = this._inherited = this._inherited || {};
+
+        // crack arguments
+        if(typeof args == "string"){
+            name = args;
+            args = a;
+            a = f;
+        }
+        f = 0;
+
+        caller = args.callee;
+        name = name || caller.nom;
+        if(!name){
+            err("can't deduce a name to call inherited()", this.declaredClass);
+        }
+
+        meta = this.constructor._meta;
+        bases = meta.bases;
+
+        pos = cache.p;
+        if(name != cname){
+            // method
+            if(cache.c !== caller){
+                // cache bust
+                pos = 0;
+                base = bases[0];
+                meta = base._meta;
+                if(meta.hidden[name] !== caller){
+                    // error detection
+                    chains = meta.chains;
+                    if(chains && typeof chains[name] == "string"){
+                        err("calling chained method with inherited: " + name, this.declaredClass);
+                    }
+                    // find caller
+                    do{
+                        meta = base._meta;
+                        proto = base.prototype;
+                        if(meta && (proto[name] === caller && proto.hasOwnProperty(name) || meta.hidden[name] === caller)){
+                            break;
+                        }
+                    }while(base = bases[++pos]); // intentional assignment
+                    pos = base ? pos : -1;
+                }
+            }
+            // find next
+            base = bases[++pos];
+            if(base){
+                proto = base.prototype;
+                if(base._meta && proto.hasOwnProperty(name)){
+                    f = proto[name];
+                }else{
+                    opf = op[name];
+                    do{
+                        proto = base.prototype;
+                        f = proto[name];
+                        if(f && (base._meta ? proto.hasOwnProperty(name) : f !== opf)){
+                            break;
+                        }
+                    }while(base = bases[++pos]); // intentional assignment
+                }
+            }
+            f = base && f || op[name];
+        }else{
+            // constructor
+            if(cache.c !== caller){
+                // cache bust
+                pos = 0;
+                meta = bases[0]._meta;
+                if(meta && meta.ctor !== caller){
+                    // error detection
+                    chains = meta.chains;
+                    if(!chains || chains.constructor !== "manual"){
+                        err("calling chained constructor with inherited", this.declaredClass);
+                    }
+                    // find caller
+                    while(base = bases[++pos]){ // intentional assignment
+                        meta = base._meta;
+                        if(meta && meta.ctor === caller){
+                            break;
+                        }
+                    }
+                    pos = base ? pos : -1;
+                }
+            }
+            // find next
+            while(base = bases[++pos]){ // intentional assignment
+                meta = base._meta;
+                f = meta ? meta.ctor : base;
+                if(f){
+                    break;
+                }
+            }
+            f = base && f;
+        }
+
+        // cache the found super method
+        cache.c = f;
+        cache.p = pos;
+
+        // now we have the result
+        if(f){
+            return a === true ? f : f.apply(this, a || args);
+        }
+        // intentionally no return if a super method was not found
+    }
+
+    declare.safeMixin = safeMixin;
+    declare.mixin = mixin;
+    _ROOT.__webpackage_declare = declare;
+    return declare;
+}));
