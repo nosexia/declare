@@ -1,0 +1,11 @@
+*{
+	margin:0;
+	padding: 0;
+}
+
+.oper-star{
+	position: relative;
+	height: 40px;
+	width: 100px;
+	background-image: url(../images/oper_star.png);
+}
